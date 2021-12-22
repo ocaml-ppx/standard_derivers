@@ -1,0 +1,2 @@
+(library (name ppx_test) (inline_tests) (libraries fieldslib)
+ (preprocess (pps ppx_make ppx_inline_test)))

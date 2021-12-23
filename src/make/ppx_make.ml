@@ -34,6 +34,16 @@
        pstr_value ~loc Nonrecursive [ value_binding ~loc ~pat:(pvar ~loc name) ~expr:body ]
      ;;
    
+     (* let mod_ ~loc : string -> structure -> structure_item =
+       fun name structure ->
+         pstr_module
+           ~loc
+           (module_binding
+              ~loc
+              ~name:(Located.mk ~loc (Some name))
+              ~expr:(pmod_structure ~loc structure))
+     ;; *)
+   
      let sig_item ~loc name typ =
        psig_value
          ~loc

@@ -23,7 +23,7 @@
          then
            Location.raise_errorf
              ~loc:pld_loc
-             "ppx_fields_conv: field name %S conflicts with one of the generated functions"
+             "ppx_make: field name %S conflicts with one of the generated functions"
              pld_name.txt)
    ;;
    
@@ -77,7 +77,7 @@
    let check_at_least_one_record ~loc rec_flag tds =
      (match rec_flag with
       | Nonrecursive ->
-        Location.raise_errorf ~loc "nonrec is not compatible with the `fields' preprocessor"
+        Location.raise_errorf ~loc "nonrec is not compatible with the `make' preprocessor"
       | _ -> ());
      let is_record td =
        match td.ptype_kind with
@@ -89,7 +89,7 @@
        Location.raise_errorf
          ~loc
          (match tds with
-          | [ _ ] -> "Unsupported use of fields (you can only use it on records)."
+          | [ _ ] -> "Unsupported use of make (you can only use it on records)."
           | _ ->
             "'with fields' can only be applied on type definitions in which at least one \
              type definition is a record")

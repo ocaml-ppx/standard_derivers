@@ -107,7 +107,8 @@
        in
        let types = List.map labdecs ~f in
        let t = Create.lambda_sig ~loc types record in
-       A.sig_item ~loc "create" t
+       let fun_name = "make_" ^ ty_name in
+       A.sig_item ~loc fun_name t
      ;;
    
      let record
@@ -163,12 +164,13 @@
        Labelled l, pvar ~loc name
      ;;
    
-     let creation_fun ~loc _record_name labdecs =
+     let creation_fun ~loc record_name labdecs =
        let names = Inspect.field_names labdecs in
        let f = Create.record ~loc (List.map names ~f:(fun n -> n, evar ~loc n)) in
        let patterns = List.map names ~f:(fun x -> label_arg ~loc x) in
        let f = Create.lambda ~loc patterns f in
-       A.str_item ~loc "create" f
+       let fun_name = "make_" ^ record_name in
+       A.str_item ~loc fun_name f
      ;;
    
      let record
@@ -205,11 +207,11 @@
        List.concat_map tds ~f:(create_of_td)
      ;;
    end
-   
+
    let create =
-     Deriving.add "create"
+    Deriving.add "create"
        ~str_type_decl:
-         (Deriving.Generator.make_noarg Gen_struct.generate)
-       ~sig_type_decl:(Deriving.Generator.make_noarg Gen_sig.generate)
+        (Deriving.Generator.make_noarg Gen_struct.generate)
+       ~sig_type_decl:
+        (Deriving.Generator.make_noarg Gen_sig.generate)
    ;;
-   

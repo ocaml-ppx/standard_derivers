@@ -8,7 +8,7 @@
    open Ast_builder.Default
    
    let check_no_collision =
-     let always = [ "create" ] in
+     let always = [ "make" ] in
      fun (lbls : label_declaration list) ->
        let generated_funs =
          let extra_forbidden_names =
@@ -99,7 +99,7 @@
      let apply_type ~loc ~ty_name ~tps = ptyp_constr ~loc (Located.lident ~loc ty_name) tps
      let label_arg name ty = Labelled name, ty
    
-     let create_fun ~ty_name ~tps ~loc labdecs =
+     let make_fun ~ty_name ~tps ~loc labdecs =
        let record = apply_type ~loc ~ty_name ~tps in
        let f labdec =
          let { pld_name = name; pld_type = ty; _ } = labdec in
@@ -119,7 +119,7 @@
            (labdecs : label_declaration list)
        : signature
        =
-       let create_fun = create_fun ~ty_name ~tps ~loc labdecs in
+       let make_fun = make_fun ~ty_name ~tps ~loc labdecs in
                 (match private_ with
                    (* The ['perm] phantom type prohibits first-class fields from mutating or
                       creating private records, so we can expose them (and fold, etc.).
@@ -127,10 +127,10 @@
                       However, we still can't expose functions that explicitly create private
                       records. *)
                    | Private -> []
-                   | Public -> [ create_fun ])
+                   | Public -> [ make_fun ])
      ;;
    
-     let create_of_td (td : type_declaration) : signature =
+     let make_of_td (td : type_declaration) : signature =
        let { ptype_name = { txt = ty_name; loc }
            ; ptype_private = private_
            ; ptype_params
@@ -150,7 +150,7 @@
    
      let generate ~loc ~path:_ (rec_flag, tds) =
        check_at_least_one_record ~loc rec_flag tds;
-       List.concat_map tds ~f:(create_of_td)
+       List.concat_map tds ~f:(make_of_td)
      ;;
    end
    
@@ -164,7 +164,7 @@
        Labelled l, pvar ~loc name
      ;;
    
-     let creation_fun ~loc record_name labdecs =
+     let make_fun ~loc record_name labdecs =
        let names = Inspect.field_names labdecs in
        let f = Create.record ~loc (List.map names ~f:(fun n -> n, evar ~loc n)) in
        let patterns = List.map names ~f:(fun x -> label_arg ~loc x) in
@@ -180,13 +180,13 @@
            (labdecs : label_declaration list)
        : structure
        =
-       let create = creation_fun ~loc record_name labdecs in
+       let make = make_fun ~loc record_name labdecs in
        (match private_ with
          | Private -> []
-         | Public -> [ create ])
+         | Public -> [ make ])
      ;;
    
-     let create_of_td (td : type_declaration) : structure =
+     let make_of_td (td : type_declaration) : structure =
        let { ptype_name = { txt = record_name; loc }
            ; ptype_private = private_
            ; ptype_kind
@@ -204,12 +204,12 @@
    
      let generate ~loc ~path:_ (rec_flag, tds) =
        check_at_least_one_record ~loc rec_flag tds;
-       List.concat_map tds ~f:(create_of_td)
+       List.concat_map tds ~f:(make_of_td)
      ;;
    end
 
-   let create =
-    Deriving.add "create"
+   let make =
+    Deriving.add "make"
        ~str_type_decl:
         (Deriving.Generator.make_noarg Gen_struct.generate)
        ~sig_type_decl:

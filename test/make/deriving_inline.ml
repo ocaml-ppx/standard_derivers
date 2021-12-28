@@ -7,7 +7,7 @@ and r =
   { a: t
   ; b: bool
   }
-[@@deriving_inline create]
+[@@deriving_inline make]
 
 let _ = fun (_ : t) -> ()
 let _ = fun (_ : r) -> ()

@@ -47,3 +47,16 @@ Test 3: recursive record types
       val make_d : v:e -> w:bool -> d
       val make_e : x:int -> y:bool -> z:d -> e
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
+
+Test 4: private type
+  $ test4="
+  > type f = private {
+  >   x: int ;
+  >   y: bool }[@@deriving make]"
+  $ echo "$test4" > test.mli
+  $ ./driver.exe test.mli
+  File "test.mli", line 2, characters 5-6:
+  2 | type f = private {
+           ^
+  Error: We cannot expose functions that explicitly create private records.
+  [1]

@@ -17,6 +17,20 @@ Test 1: For a regular record type
       let _ = make_a
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
+Test 2: Error msg for nonrec type
+  $ test2="
+  > type nonrec b = {
+  >   x: int ;
+  >   y: bool }[@@deriving make]"
+  $ echo "$test2" > test.ml
+  $ ./driver.exe test.ml
+  File "test.ml", lines 2-4, characters 0-28:
+  2 | type nonrec b = {
+  3 |   x: int ;
+  4 |   y: bool }[@@deriving make]
+  Error: nonrec is not compatible with the `make' preprocessor.
+  [1]
+
 Test 3: expect an error because make cannot be derived for non-record types
   $ test3="
   > type c = int * int

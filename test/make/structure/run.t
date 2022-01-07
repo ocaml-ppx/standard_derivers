@@ -87,5 +87,5 @@ Test 6: recursive types without any record types
   File "test.ml", lines 2-3, characters 0-32:
   2 | type f = int*g
   3 | and g = bool*f [@@deriving make]
-  Error: make can only be applied on type definitions in which at least one type definition is a record.
+  Error: 'with fields' can only be applied on type definitions in which at least one type definition is a record
   [1]

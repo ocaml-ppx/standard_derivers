@@ -90,7 +90,9 @@
        =
        let derived_item = create_make_fun ~loc ~ty_name ~tps label_decls in
         (match private_ with
-            | Private -> Location.raise_errorf ~loc "We cannot expose functions that explicitly create private records."
+            (* We can't expose functions that explicitly create private 
+              records. *)
+            | Private -> []
             | Public -> [ derived_item ])
      ;;
    

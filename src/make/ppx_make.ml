@@ -46,7 +46,7 @@
    let check_at_least_one_record ~loc rec_flag tds =
      (match rec_flag with
       | Nonrecursive ->
-        Location.raise_errorf ~loc "nonrec is not compatible with the `make' preprocessor"
+        Location.raise_errorf ~loc "nonrec is not compatible with the `make' preprocessor."
       | _ -> ());
      let is_record td =
        match td.ptype_kind with
@@ -60,15 +60,15 @@
          (match tds with
           | [ _ ] -> "Unsupported use of make (you can only use it on records)."
           | _ ->
-            "'with fields' can only be applied on type definitions in which at least one \
-             type definition is a record")
+            "make can only be applied on type definitions in which at least one \
+             type definition is a record.")
    ;;
-   
+  
    module Gen_sig = struct
      let apply_type ~loc ~ty_name ~tps = ptyp_constr ~loc (Located.lident ~loc ty_name) tps
      let label_arg name ty = Labelled name, ty
    
-     let make_fun ~ty_name ~tps ~loc label_decls =
+     let create_make_fun ~loc ~ty_name ~tps label_decls =
        let record = apply_type ~loc ~ty_name ~tps in
        let derive_type label_decl =
          let { pld_name = name; pld_type = ty; _ } = label_decl in
@@ -88,15 +88,12 @@
            (label_decls : label_declaration list)
        : signature
        =
-       let make_fun = make_fun ~ty_name ~tps ~loc label_decls in
-                (match private_ with
-                   (* The ['perm] phantom type prohibits first-class fields from mutating or
-                      creating private records, so we can expose them (and fold, etc.).
-   
-                      However, we still can't expose functions that explicitly create private
-                      records. *)
-                   | Private -> []
-                   | Public -> [ make_fun ])
+       let derived_item = create_make_fun ~loc ~ty_name ~tps label_decls in
+        (match private_ with
+            (* We can't expose functions that explicitly create private 
+              records. *)
+            | Private -> []
+            | Public -> [ derived_item ])
      ;;
    
      let derive_per_td (td : type_declaration) : signature =
@@ -132,7 +129,7 @@
        Labelled l, pvar ~loc name
      ;;
    
-     let make_fun ~loc record_name label_decls =
+     let create_make_fun ~loc ~record_name label_decls =
        let names = Inspect.field_names label_decls in
        let create_record = Create.record ~loc (List.map (fun n -> n, evar ~loc n) names) in
        let patterns = List.map (fun x -> label_arg ~loc x) names in
@@ -148,12 +145,12 @@
            (label_decls : label_declaration list)
        : structure
        =
-       let make = make_fun ~loc record_name label_decls in
+       let derived_item = create_make_fun ~loc ~record_name label_decls in
        (match private_ with
          | Private -> []
-         | Public -> [ make ])
+         | Public -> [ derived_item ])
      ;;
-   
+    
      let derive_per_td (td : type_declaration) : structure =
        let { ptype_name = { txt = record_name; loc }
            ; ptype_private = private_

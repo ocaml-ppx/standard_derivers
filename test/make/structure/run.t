@@ -46,7 +46,7 @@ Test 3: Given a non-record type, throw error
   Error: Unsupported use of make (you can only use it on records).
   [1]
 
-Test 4: Given a private record type f, derive make_f
+Test 4: Given a private record type d, derive make_d
   $ test4="
   > type d = private {
   >   x: int ;

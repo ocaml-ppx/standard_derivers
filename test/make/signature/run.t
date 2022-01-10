@@ -1,4 +1,9 @@
-Test 1: regular record type
+---------------------------------------------------
+NOTICE: @@ocaml.doc and @@merlin.hide annotations
+& `include struct` boilerplate are added by ppxlib.
+---------------------------------------------------
+
+Test 1: Given a regular record type a, expose make_a
   $ test1="
   > type a = {
   >   x: int ;
@@ -11,11 +16,25 @@ Test 1: regular record type
   include sig [@@@ocaml.warning "-32"] val make_a : x:int -> y:bool -> a end
   [@@ocaml.doc "@inline"][@@merlin.hide ]
 
-Test 2: invalid non-record type
+Test 2: Given a nonrec type, throw error
   $ test2="
+  > type nonrec b = {
+  >   x: int ;
+  >   y: bool }[@@deriving make]"
+  $ echo "$test2" > test.mli
+  $ ./driver.exe test.mli
+  File "test.mli", lines 2-4, characters 0-28:
+  2 | type nonrec b = {
+  3 |   x: int ;
+  4 |   y: bool }[@@deriving make]
+  Error: nonrec is not compatible with the `make' preprocessor.
+  [1]
+
+Test 3: Given a non-record type, throw error
+  $ test3="
   > type c = int * int
   > [@@deriving make]"
-  $ echo "$test2" > test.mli
+  $ echo "$test3" > test.mli
   $ ./driver.exe test.mli
   File "test.mli", lines 2-3, characters 0-17:
   2 | type c = int * int
@@ -23,40 +42,70 @@ Test 2: invalid non-record type
   Error: Unsupported use of make (you can only use it on records).
   [1]
 
-Test 3: recursive record types
-  $ test3="
-  > type d = {
-  >   v: e ;
-  >   w: bool }
-  > and e = {
-  >   x: int ;
-  >   mutable y: bool ;
-  >   z: d }[@@deriving make]"
-  $ echo "$test3" > test.mli
-  $ ./driver.exe test.mli
-  type d = {
-    v: e ;
-    w: bool }
-  and e = {
-    x: int ;
-    mutable y: bool ;
-    z: d }[@@deriving make]
-  include
-    sig
-      [@@@ocaml.warning "-32"]
-      val make_d : v:e -> w:bool -> d
-      val make_e : x:int -> y:bool -> z:d -> e
-    end[@@ocaml.doc "@inline"][@@merlin.hide ]
-
-Test 4: private type
+Test 4: Given a private type, throw error
   $ test4="
-  > type f = private {
+  > type d = private {
   >   x: int ;
   >   y: bool }[@@deriving make]"
   $ echo "$test4" > test.mli
   $ ./driver.exe test.mli
   File "test.mli", line 2, characters 5-6:
-  2 | type f = private {
+  2 | type d = private {
            ^
   Error: We cannot expose functions that explicitly create private records.
+  [1]
+
+Test 5: Given recursive types which are exclusively
+record types, expose 1 make function for each record 
+  $ test5="
+  > type e = {
+  >   v: f ;
+  >   w: bool }
+  > and f = {
+  >   x: int ;
+  >   mutable y: bool ;
+  >   z: e }[@@deriving make]"
+  $ echo "$test5" > test.mli
+  $ ./driver.exe test.mli
+  type e = {
+    v: f ;
+    w: bool }
+  and f = {
+    x: int ;
+    mutable y: bool ;
+    z: e }[@@deriving make]
+  include
+    sig
+      [@@@ocaml.warning "-32"]
+      val make_e : v:f -> w:bool -> e
+      val make_f : x:int -> y:bool -> z:e -> f
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
+
+Test 6: Given recursive types with at least one 
+record type, expose 1 make function for each type 
+  $ test6="
+  > type g = int*h
+  > and h = {
+  >   v: g ;
+  >   w: bool }[@@deriving make]"
+  $ echo "$test6" > test.mli  
+  $ ./driver.exe test.mli
+  type g = (int * h)
+  and h = {
+    v: g ;
+    w: bool }[@@deriving make]
+  include sig [@@@ocaml.warning "-32"] val make_h : v:g -> w:bool -> h end
+  [@@ocaml.doc "@inline"][@@merlin.hide ]
+
+Test 7: Given recursive types without any record
+types, throw error
+  $ test7="
+  > type i = int*j
+  > and j = bool*i [@@deriving make]"
+  $ echo "$test7" > test.mli  
+  $ ./driver.exe test.mli
+  File "test.mli", lines 2-3, characters 0-32:
+  2 | type i = int*j
+  3 | and j = bool*i [@@deriving make]
+  Error: make can only be applied on type definitions in which at least one type definition is a record.
   [1]

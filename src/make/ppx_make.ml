@@ -1,6 +1,6 @@
 (* Generated code should depend on the environment in scope as little as
-   possible.  E.g. rather than [foo = []] do [match foo with [] ->], to eliminate the
-   use of [=], which might be overwritten in the environment.
+   possible.  E.g. rather than [foo = []] do [match foo with [] ->], to 
+   eliminate the use of [=], which might be overwritten in the environment.
    It is especially important to not use polymorphic comparisons. *)
 
    open Ppxlib
@@ -9,38 +9,34 @@
    module Construct = struct
      (* Additional AST construction helpers *)
    
+     let apply_type ~loc ~ty_name ~tps = 
+      ptyp_constr ~loc (Located.lident ~loc ty_name) tps
+     ;;
+
+     let lambda ~loc patterns body =
+      List.fold_right (fun (lab, pat) acc ->
+       pexp_fun ~loc lab None pat acc) patterns body
+     ;;
+  
+     let lambda_sig ~loc arg_tys body_ty =
+      List.fold_right (fun (lab, arg_ty) acc ->
+       ptyp_arrow ~loc lab arg_ty acc) arg_tys body_ty
+     ;;
+
+     let record ~loc pairs =
+      pexp_record
+        ~loc
+        (List.map (fun (name, exp) -> Located.lident ~loc name, exp) pairs)
+        None
+     ;;
+
+     let sig_item ~loc name typ =
+      psig_value ~loc (value_description ~loc ~name:(Located.mk ~loc name) ~type_:typ ~prim:[])
+    ;;
+    
      let str_item ~loc name body =
        pstr_value ~loc Nonrecursive [ value_binding ~loc ~pat:(pvar ~loc name) ~expr:body ]
      ;;
-   
-     let sig_item ~loc name typ =
-       psig_value
-         ~loc
-         (value_description ~loc ~name:(Located.mk ~loc name) ~type_:typ ~prim:[])
-     ;;
-   end
-   
-   module Create = struct
-     let record ~loc pairs =
-       pexp_record
-         ~loc
-         (List.map (fun (name, exp) -> Located.lident ~loc name, exp) pairs)
-         None
-     ;;
-   
-     let lambda ~loc patterns body =
-       List.fold_right (fun (lab, pat) acc ->
-        pexp_fun ~loc lab None pat acc) patterns body
-     ;;
-   
-     let lambda_sig ~loc arg_tys body_ty =
-       List.fold_right (fun (lab, arg_ty) acc ->
-        ptyp_arrow ~loc lab arg_ty acc) arg_tys body_ty
-     ;;
-   end
-   
-   module Inspect = struct
-     let field_names label_decls = List.map (fun label_decl -> label_decl.pld_name.txt) label_decls
    end
    
    let check_at_least_one_record ~loc rec_flag tds =
@@ -65,35 +61,25 @@
    ;;
   
    module Gen_sig = struct
-     let apply_type ~loc ~ty_name ~tps = ptyp_constr ~loc (Located.lident ~loc ty_name) tps
      let label_arg name ty = Labelled name, ty
    
      let create_make_fun ~loc ~ty_name ~tps label_decls =
-       let record = apply_type ~loc ~ty_name ~tps in
+       let record = Construct.apply_type ~loc ~ty_name ~tps in
        let derive_type label_decl =
          let { pld_name = name; pld_type = ty; _ } = label_decl in
          label_arg name.txt ty
        in
        let types = List.map derive_type label_decls in
-       let t = Create.lambda_sig ~loc types record in
+       let t = Construct.lambda_sig ~loc types record in
        let fun_name = "make_" ^ ty_name in
        Construct.sig_item ~loc fun_name t
      ;;
-
-     let record
-           ~private_
-           ~ty_name
-           ~tps
-           ~loc
-           (label_decls : label_declaration list)
-       : signature
-       =
-       let derived_item = create_make_fun ~loc ~ty_name ~tps label_decls in
-        (match private_ with
-            | Private -> Location.raise_errorf ~loc "We cannot expose functions that explicitly create private records."
-            | Public -> [ derived_item ])
-     ;;
    
+     let check_public ~private_ ~loc = 
+      (match private_ with
+            | Private -> Location.raise_errorf ~loc "We cannot expose functions that explicitly create private records."
+            | Public -> () )
+
      let derive_per_td (td : type_declaration) : signature =
        let { ptype_name = { txt = ty_name; loc }
            ; ptype_private = private_
@@ -107,7 +93,9 @@
        let tps = List.map (fun (tp, _variance) -> tp) ptype_params in
        match ptype_kind with
        | Ptype_record label_decls ->
-         record ~private_ ~ty_name ~tps ~loc label_decls
+        check_public ~private_ ~loc ;
+         let derived_item = create_make_fun ~loc ~ty_name ~tps label_decls in
+        [ derived_item ]
        | _ -> []
      ;;
    
@@ -128,25 +116,12 @@
      ;;
    
      let create_make_fun ~loc ~record_name label_decls =
-       let names = Inspect.field_names label_decls in
-       let create_record = Create.record ~loc (List.map (fun n -> n, evar ~loc n) names) in
+       let names = List.map (fun label_decl -> label_decl.pld_name.txt) label_decls in
+       let create_record = Construct.record ~loc (List.map (fun n -> n, evar ~loc n) names) in
        let patterns = List.map (fun x -> label_arg ~loc x) names in
-       let derive_lambda = Create.lambda ~loc patterns create_record in
+       let derive_lambda = Construct.lambda ~loc patterns create_record in
        let fun_name = "make_" ^ record_name in
        Construct.str_item ~loc fun_name derive_lambda
-     ;;
-   
-     let record
-           ~private_
-           ~record_name
-           ~loc
-           (label_decls : label_declaration list)
-       : structure
-       =
-       let derived_item = create_make_fun ~loc ~record_name label_decls in
-       (match private_ with
-         | Private -> []
-         | Public -> [ derived_item ])
      ;;
     
      let derive_per_td (td : type_declaration) : structure =
@@ -160,7 +135,10 @@
        in
        match ptype_kind with
        | Ptype_record label_decls ->
-         record ~private_ ~record_name ~loc label_decls
+        (match private_ with
+        | Private -> []
+        | Public -> let derived_item = create_make_fun ~loc ~record_name label_decls in
+        [ derived_item ])
        | _ -> []
      ;;
    

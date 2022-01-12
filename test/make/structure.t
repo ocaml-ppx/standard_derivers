@@ -9,7 +9,7 @@ Test 1: Given a regular record type a, derive make_a
   >   x: int ;
   >   y: bool }[@@deriving make]"
   $ echo "$test1" > test.ml
-  $ ./driver.exe test.ml
+  $ driver test.ml
   type a = {
     x: int ;
     y: bool }[@@deriving make]
@@ -26,7 +26,7 @@ Test 2: Given a nonrec type, throw error
   >   x: int ;
   >   y: bool }[@@deriving make]"
   $ echo "$test2" > test.ml
-  $ ./driver.exe test.ml
+  $ driver test.ml
   File "test.ml", lines 2-4, characters 0-28:
   2 | type nonrec b = {
   3 |   x: int ;
@@ -39,7 +39,7 @@ Test 3: Given a non-record type, throw error
   > type c = int * int
   > [@@deriving make]"
   $ echo "$test3" > test.ml
-  $ ./driver.exe test.ml
+  $ driver test.ml
   File "test.ml", lines 2-3, characters 0-17:
   2 | type c = int * int
   3 | [@@deriving make]
@@ -52,7 +52,7 @@ Test 4: Given a private record type d, derive make_d
   >   x: int ;
   >   y: bool }[@@deriving make]"
   $ echo "$test4" > test.ml
-  $ ./driver.exe test.ml
+  $ driver test.ml
   type d = private {
     x: int ;
     y: bool }[@@deriving make]
@@ -70,7 +70,7 @@ record types, derive 1 make function for each record
   >   mutable y: bool ;
   >   z: e }[@@deriving make]"
   $ echo "$test5" > test.ml  
-  $ ./driver.exe test.ml
+  $ driver test.ml
   type e = {
     v: f ;
     w: bool }
@@ -96,7 +96,7 @@ record type, derive one make function for each type
   >   v: g ;
   >   w: bool }[@@deriving make]"
   $ echo "$test6" > test.ml  
-  $ ./driver.exe test.ml
+  $ driver test.ml
   type g = (int * h)
   and h = {
     v: g ;
@@ -115,7 +115,7 @@ types, throw error
   > type i = int*j
   > and i = bool*j [@@deriving make]"
   $ echo "$test7" > test.ml  
-  $ ./driver.exe test.ml
+  $ driver test.ml
   File "test.ml", lines 2-3, characters 0-32:
   2 | type i = int*j
   3 | and i = bool*j [@@deriving make]

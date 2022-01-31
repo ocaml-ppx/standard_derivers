@@ -38,32 +38,37 @@
        pstr_value ~loc Nonrecursive [ value_binding ~loc ~pat:(pvar ~loc name) ~expr:body ]
      ;;
    end
-   
-   let check_at_least_one_record ~loc rec_flag tds =
-     (match rec_flag with
-      | Nonrecursive ->
-        Location.raise_errorf ~loc "nonrec is not compatible with the `make' preprocessor."
-      | _ -> ());
-     let is_record td =
-       match td.ptype_kind with
-       | Ptype_record _ -> true
-       | _ -> false
-     in
-     if not (List.exists is_record tds)
-     then
-       Location.raise_errorf
-         ~loc
-         (match tds with
-          | [ _ ] -> "Unsupported use of make (you can only use it on records)."
-          | _ ->
-            "make can only be applied on type definitions in which at least one \
-             type definition is a record.")
-   ;;
+
+   module Check = struct
+    let derivable ~loc rec_flag tds =
+      (match rec_flag with
+       | Nonrecursive ->
+         Location.raise_errorf ~loc "nonrec is not compatible with the `make' preprocessor."
+       | _ -> ());
+      let is_record td =
+        match td.ptype_kind with
+        | Ptype_record _ -> true
+        | _ -> false
+      in
+      if not (List.exists is_record tds)
+      then
+        Location.raise_errorf
+          ~loc
+          (match tds with
+           | [ _ ] -> "Unsupported use of make (you can only use it on records)."
+           | _ ->
+             "make can only be applied on type definitions in which at least one \
+              type definition is a record.")
+    ;;
+  end
   
    module Gen_sig = struct
-     let label_arg name ty = Labelled name, ty
+     let label_arg name ty = match ty with 
+     (* a' option               -> ?name        , a' *)
+     | [%type: [%t? a'] option] -> Optional name, a'
+     | _ -> Labelled name, ty
    
-     let create_make_fun ~loc ~ty_name ~tps label_decls =
+     let create_make_sig ~loc ~ty_name ~tps label_decls =
        let record = Construct.apply_type ~loc ~ty_name ~tps in
        let derive_type label_decl =
          let { pld_name = name; pld_type = ty; _ } = label_decl in
@@ -94,13 +99,13 @@
        match ptype_kind with
        | Ptype_record label_decls ->
         check_public ~private_ ~loc ;
-         let derived_item = create_make_fun ~loc ~ty_name ~tps label_decls in
+         let derived_item = create_make_sig ~loc ~ty_name ~tps label_decls in
         [ derived_item ]
        | _ -> []
      ;;
    
      let generate ~loc ~path:_ (rec_flag, tds) =
-       check_at_least_one_record ~loc rec_flag tds;
+       Check.derivable ~loc rec_flag tds;
        List.concat_map (derive_per_td) tds
      ;;
    end
@@ -143,7 +148,7 @@
      ;;
    
      let generate ~loc ~path:_ (rec_flag, tds) =
-       check_at_least_one_record ~loc rec_flag tds;
+       Check.derivable ~loc rec_flag tds;
        List.concat_map (derive_per_td) tds
      ;;
    end

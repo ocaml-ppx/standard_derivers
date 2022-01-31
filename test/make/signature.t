@@ -109,3 +109,17 @@ types, throw error
   3 | and j = bool*i [@@deriving make]
   Error: make can only be applied on type definitions in which at least one type definition is a record.
   [1]
+
+Test 8: Given a record type k with an `option` 
+field, expose make_k
+  $ test8="
+  > type k = {
+  >   x: int ;
+  >   y: bool option }[@@deriving make]"
+  $ echo "$test8" > test.mli
+  $ driver test.mli 
+  type k = {
+    x: int ;
+    y: bool option }[@@deriving make]
+  include sig [@@@ocaml.warning "-32"] val make_k : x:int -> ?y:bool -> k end
+  [@@ocaml.doc "@inline"][@@merlin.hide ]

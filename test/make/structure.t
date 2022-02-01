@@ -121,3 +121,21 @@ types, throw error
   3 | and i = bool*j [@@deriving make]
   Error: make can only be applied on type definitions in which at least one type definition is a record.
   [1]
+
+Test 8: Given a record type k with an `option` 
+field, derive make_k
+  $ test8="
+  > type k = {
+  >   x: int ;
+  >   y: bool option }[@@deriving make]"
+  $ echo "$test8" > test.ml
+  $ driver test.ml
+  type k = {
+    x: int ;
+    y: bool option }[@@deriving make]
+  include
+    struct
+      let _ = fun (_ : k) -> ()
+      let make_k ~x  ?y  = { x; y }
+      let _ = make_k
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]

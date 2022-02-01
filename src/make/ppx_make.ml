@@ -68,6 +68,10 @@
      | [%type: [%t? a'] option] -> Optional name, a'
      | _ -> Labelled name, ty
    
+     let change_last_type ~loc types has_option = match has_option with 
+     | true -> types @ [ Nolabel, Ast_helper.Typ.constr ~loc { txt = Lident "unit"; loc } [] ]
+     | _ -> types
+
      let create_make_sig ~loc ~ty_name ~tps label_decls =
        let record = Construct.apply_type ~loc ~ty_name ~tps in
        let derive_type label_decl =
@@ -75,6 +79,11 @@
          label_arg name.txt ty
        in
        let types = List.map derive_type label_decls in
+       let has_option = List.exists ( fun (name, _) -> match name with 
+        | Optional _ -> true
+        | _ -> false) types
+       in
+       let types = change_last_type ~loc types has_option in
        let t = Construct.lambda_sig ~loc types record in
        let fun_name = "make_" ^ ty_name in
        Construct.sig_item ~loc fun_name t
@@ -98,7 +107,7 @@
        let tps = List.map (fun (tp, _variance) -> tp) ptype_params in
        match ptype_kind with
        | Ptype_record label_decls ->
-        check_public ~private_ ~loc ;
+         check_public ~private_ ~loc ;
          let derived_item = create_make_sig ~loc ~ty_name ~tps label_decls in
         [ derived_item ]
        | _ -> []

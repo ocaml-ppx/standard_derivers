@@ -70,7 +70,7 @@
    
      let change_last_type ~loc types has_option = match has_option with 
      | true -> types @ [ Nolabel, Ast_helper.Typ.constr ~loc { txt = Lident "unit"; loc } [] ]
-     | _ -> types
+     | false -> types
 
      let create_make_sig ~loc ~ty_name ~tps label_decls =
        let record = Construct.apply_type ~loc ~ty_name ~tps in
@@ -120,19 +120,16 @@
    end
    
    module Gen_struct = struct
-     let label_arg ?label ~loc name =
-       let l =
-         match label with
-         | None -> name
-         | Some n -> n
-       in
-       Labelled l, pvar ~loc name
+     let label_arg ~loc name ty =
+         match ty with
+         | [%type: [%t? _] option] -> Optional name, pvar ~loc name
+         | _ -> Labelled name, pvar ~loc name
      ;;
    
      let create_make_fun ~loc ~record_name label_decls =
-       let names = List.map (fun label_decl -> label_decl.pld_name.txt) label_decls in
-       let create_record = Construct.record ~loc (List.map (fun n -> n, evar ~loc n) names) in
-       let patterns = List.map (fun x -> label_arg ~loc x) names in
+       let names_and_types = List.map (fun label_decl -> label_decl.pld_name.txt, label_decl.pld_type) label_decls in
+       let create_record = Construct.record ~loc (List.map (fun (n, _) -> n, evar ~loc n) names_and_types) in
+       let patterns = List.map (fun (n,t) -> label_arg ~loc n t) names_and_types in
        let derive_lambda = Construct.lambda ~loc patterns create_record in
        let fun_name = "make_" ^ record_name in
        Construct.str_item ~loc fun_name derive_lambda

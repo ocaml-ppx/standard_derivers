@@ -121,5 +121,6 @@ field, expose make_k
   type k = {
     x: int ;
     y: bool option }[@@deriving make]
-  include sig [@@@ocaml.warning "-32"] val make_k : x:int -> ?y:bool -> k end
+  include
+    sig [@@@ocaml.warning "-32"] val make_k : x:int -> ?y:bool -> unit -> k end
   [@@ocaml.doc "@inline"][@@merlin.hide ]

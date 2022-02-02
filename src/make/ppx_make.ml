@@ -60,6 +60,10 @@
              "make can only be applied on type definitions in which at least one \
               type definition is a record.")
     ;;
+
+    let has_option labels = List.exists (fun (name, _) -> match name with 
+    | Optional _ -> true
+    | _ -> false) labels
   end
   
    module Gen_sig = struct
@@ -67,10 +71,6 @@
      (* a' option               -> ?name        , a' *)
      | [%type: [%t? a'] option] -> Optional name, a'
      | _ -> Labelled name, ty
-   
-     let change_last_type ~loc types has_option = match has_option with 
-     | true -> types @ [ Nolabel, Ast_helper.Typ.constr ~loc { txt = Lident "unit"; loc } [] ]
-     | false -> types
 
      let create_make_sig ~loc ~ty_name ~tps label_decls =
        let record = Construct.apply_type ~loc ~ty_name ~tps in
@@ -79,11 +79,14 @@
          label_arg name.txt ty
        in
        let types = List.map derive_type label_decls in
-       let has_option = List.exists ( fun (name, _) -> match name with 
-        | Optional _ -> true
-        | _ -> false) types
+       let add_unit types = types @ [ 
+         Nolabel, 
+         Ast_helper.Typ.constr ~loc { txt = Lident "unit"; loc } [] 
+       ] in 
+       let types = match Check.has_option types with 
+        | true -> add_unit types
+        | false -> types
        in
-       let types = change_last_type ~loc types has_option in
        let t = Construct.lambda_sig ~loc types record in
        let fun_name = "make_" ^ ty_name in
        Construct.sig_item ~loc fun_name t
@@ -130,6 +133,11 @@
        let names_and_types = List.map (fun label_decl -> label_decl.pld_name.txt, label_decl.pld_type) label_decls in
        let create_record = Construct.record ~loc (List.map (fun (n, _) -> n, evar ~loc n) names_and_types) in
        let patterns = List.map (fun (n,t) -> label_arg ~loc n t) names_and_types in
+       let add_unit patterns = patterns @ [ Nolabel, punit ~loc ] in
+       let patterns = match Check.has_option patterns with 
+       | true -> add_unit patterns
+       | false -> patterns
+       in
        let derive_lambda = Construct.lambda ~loc patterns create_record in
        let fun_name = "make_" ^ record_name in
        Construct.str_item ~loc fun_name derive_lambda

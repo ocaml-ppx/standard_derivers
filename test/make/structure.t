@@ -136,6 +136,6 @@ field, derive make_k
   include
     struct
       let _ = fun (_ : k) -> ()
-      let make_k ~x  ?y  = { x; y }
+      let make_k ~x  ?y  () = { x; y }
       let _ = make_k
     end[@@ocaml.doc "@inline"][@@merlin.hide ]

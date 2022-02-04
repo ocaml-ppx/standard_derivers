@@ -111,7 +111,7 @@ types, throw error
   [1]
 
 Test 8: Given a record type k with an `option` 
-field, expose make_k
+field, expose make_k with a unit at the end
   $ test8="
   > type k = {
   >   x: int ;
@@ -124,3 +124,50 @@ field, expose make_k
   include
     sig [@@@ocaml.warning "-32"] val make_k : x:int -> ?y:bool -> unit -> k end
   [@@ocaml.doc "@inline"][@@merlin.hide ]
+
+Test 9: Given a record type l annotated with `@main` for
+one field, expose make_l with the main field at the end
+  $ test9="
+  > type l = {
+  >   x: int [@main] ;
+  >   y: bool }[@@deriving make]"
+  $ echo "$test9" > test.mli
+  $ driver test.mli 
+  type l = {
+    x: int [@main ];
+    y: bool }[@@deriving make]
+  include sig [@@@ocaml.warning "-32"] val make_l : y:bool -> x:int -> l end
+  [@@ocaml.doc "@inline"][@@merlin.hide ]
+
+Test 10: Given a record type m annotated with `@main` for
+more than 1 field, throw error requesting 1 main field
+  $ test10="
+  > type m = {
+  >   x: int ;
+  >   y: bool [@main] ;
+  >   z : string [@main]}[@@deriving make]"
+  $ echo "$test10" > test.mli
+  $ driver test.mli 
+  File "test.mli", line 4, characters 2-19:
+  4 |   y: bool [@main] ;
+        ^^^^^^^^^^^^^^^^^
+  Error: Duplicate [@deriving.make.main] annotation
+  [1]
+
+Test 11: Given a record type n annotated with 1 option field
+and 1 @main field, expose make_n with the main field at the 
+end, and without a unit in the signature
+  $ test11="
+  > type n = {
+  >   x: int ;
+  >   y: bool [@main] ;
+  >   z : string option}[@@deriving make]"
+  $ echo "$test11" > test.mli
+  $ driver test.mli 
+  type n = {
+    x: int ;
+    y: bool [@main ];
+    z: string option }[@@deriving make]
+  include
+    sig [@@@ocaml.warning "-32"] val make_n : x:int -> ?z:string -> y:bool -> n
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]

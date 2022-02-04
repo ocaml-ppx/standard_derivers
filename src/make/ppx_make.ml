@@ -72,8 +72,20 @@
      | [%type: [%t? a'] option] -> Optional name, a'
      | _ -> Labelled name, ty
 
+     let find_main labels =
+      List.fold_right (fun ({ pld_type; pld_loc; pld_attributes ; _ } as label) (main, labels) ->
+        if Ppx_deriving.(pld_type.ptyp_attributes @ pld_attributes |>
+                         attr ~deriver:"make" "main" |> Arg.get_flag ~deriver:"make") then
+          match main with
+          | Some _ -> Location.raise_errorf ~loc:pld_loc "Duplicate [@deriving.%s.main] annotation" "make"
+          | None -> Some label, labels
+        else
+          main, label :: labels)
+        labels (None, [])
+
      let create_make_sig ~loc ~ty_name ~tps label_decls =
        let record = Construct.apply_type ~loc ~ty_name ~tps in
+       let main, label_decls = find_main label_decls in
        let derive_type label_decl =
          let { pld_name = name; pld_type = ty; _ } = label_decl in
          label_arg name.txt ty
@@ -82,10 +94,12 @@
        let add_unit types = types @ [ 
          Nolabel, 
          Ast_helper.Typ.constr ~loc { txt = Lident "unit"; loc } [] 
-       ] in 
-       let types = match Check.has_option types with 
-        | true -> add_unit types
-        | false -> types
+       ] in
+       let types = match main with 
+        | Some { pld_name = { txt = name ; _ }; pld_type ; _ } 
+            -> types @ [ Labelled name, pld_type ]
+        | None when Check.has_option types -> add_unit types
+        | None -> types
        in
        let t = Construct.lambda_sig ~loc types record in
        let fun_name = "make_" ^ ty_name in

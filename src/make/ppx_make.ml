@@ -40,7 +40,7 @@
    end
 
    module Check = struct
-    let derivable ~loc rec_flag tds =
+    let is_derivable ~loc rec_flag tds =
       (match rec_flag with
        | Nonrecursive ->
          Location.raise_errorf ~loc "nonrec is not compatible with the `make' preprocessor."
@@ -64,15 +64,8 @@
     let has_option labels = List.exists (fun (name, _) -> match name with 
     | Optional _ -> true
     | _ -> false) labels
-  end
-  
-   module Gen_sig = struct
-     let label_arg name ty = match ty with 
-     (* a' option               -> ?name        , a' *)
-     | [%type: [%t? a'] option] -> Optional name, a'
-     | _ -> Labelled name, ty
 
-     let find_main labels =
+    let find_main labels =
       List.fold_right (fun ({ pld_type; pld_loc; pld_attributes ; _ } as label) (main, labels) ->
         if Ppx_deriving.(pld_type.ptyp_attributes @ pld_attributes |>
                          attr ~deriver:"make" "main" |> Arg.get_flag ~deriver:"make") then
@@ -82,10 +75,17 @@
         else
           main, label :: labels)
         labels (None, [])
+  end
+  
+   module Gen_sig = struct
+     let label_arg name ty = match ty with 
+     (* a' option               -> ?name        , a' *)
+     | [%type: [%t? a'] option] -> Optional name, a'
+     | _ -> Labelled name, ty
 
      let create_make_sig ~loc ~ty_name ~tps label_decls =
        let record = Construct.apply_type ~loc ~ty_name ~tps in
-       let main, label_decls = find_main label_decls in
+       let main_arg, label_decls = Check.find_main label_decls in
        let derive_type label_decl =
          let { pld_name = name; pld_type = ty; _ } = label_decl in
          label_arg name.txt ty
@@ -95,7 +95,7 @@
          Nolabel, 
          Ast_helper.Typ.constr ~loc { txt = Lident "unit"; loc } [] 
        ] in
-       let types = match main with 
+       let types = match main_arg with 
         | Some { pld_name = { txt = name ; _ }; pld_type ; _ } 
             -> types @ [ Labelled name, pld_type ]
         | None when Check.has_option types -> add_unit types
@@ -131,7 +131,7 @@
      ;;
    
      let generate ~loc ~path:_ (rec_flag, tds) =
-       Check.derivable ~loc rec_flag tds;
+       Check.is_derivable ~loc rec_flag tds;
        List.concat_map (derive_per_td) tds
      ;;
    end
@@ -144,13 +144,16 @@
      ;;
    
      let create_make_fun ~loc ~record_name label_decls =
+       let main_arg, label_decls = Check.find_main label_decls in
        let names_and_types = List.map (fun label_decl -> label_decl.pld_name.txt, label_decl.pld_type) label_decls in
        let create_record = Construct.record ~loc (List.map (fun (n, _) -> n, evar ~loc n) names_and_types) in
        let patterns = List.map (fun (n,t) -> label_arg ~loc n t) names_and_types in
        let add_unit patterns = patterns @ [ Nolabel, punit ~loc ] in
-       let patterns = match Check.has_option patterns with 
-       | true -> add_unit patterns
-       | false -> patterns
+       let patterns = match main_arg with 
+        | Some { pld_name = { txt = name ; _ } ; _ } 
+            -> patterns @ [ Labelled name, pvar ~loc name ]
+        | None when Check.has_option patterns -> add_unit patterns
+        | None -> patterns
        in
        let derive_lambda = Construct.lambda ~loc patterns create_record in
        let fun_name = "make_" ^ record_name in
@@ -176,7 +179,7 @@
      ;;
    
      let generate ~loc ~path:_ (rec_flag, tds) =
-       Check.derivable ~loc rec_flag tds;
+       Check.is_derivable ~loc rec_flag tds;
        List.concat_map (derive_per_td) tds
      ;;
    end

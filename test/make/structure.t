@@ -139,3 +139,78 @@ field, derive make_k
       let make_k ~x  ?y  () = { x; y }
       let _ = make_k
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
+
+Test 9: Given a record type l annotated with `@main` for
+one field, expose make_l with the main field at the end
+  $ test9="
+  > type l = {
+  >   x: int [@main] ;
+  >   y: bool }[@@deriving make]"
+  $ echo "$test9" > test.ml
+  $ driver test.ml
+  type l = {
+    x: int [@main ];
+    y: bool }[@@deriving make]
+  include
+    struct
+      let _ = fun (_ : l) -> ()
+      let make_l ~y  ~x  = { y }
+      let _ = make_l
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
+
+Test 10: Given a record type m annotated with `@main` for
+more than 1 field, throw error
+  $ test10="
+  > type m = {
+  >   x: int ;
+  >   y: bool [@main] ;
+  >   z : string [@main]}[@@deriving make]"
+  $ echo "$test10" > test.ml
+  $ driver test.ml
+  File "test.ml", line 4, characters 2-19:
+  4 |   y: bool [@main] ;
+        ^^^^^^^^^^^^^^^^^
+  Error: Duplicate [@deriving.make.main] annotation
+  [1]
+
+Test 11: Given a record type n annotated with 1 option field
+and 1 @main field, expose make_n with the main field at the 
+end, and without a unit in the signature
+  $ test11="
+  > type n = {
+  >   x: int ;
+  >   y: bool [@main] ;
+  >   z : string option}[@@deriving make]"
+  $ echo "$test11" > test.ml
+  $ driver test.ml
+  type n = {
+    x: int ;
+    y: bool [@main ];
+    z: string option }[@@deriving make]
+  include
+    struct
+      let _ = fun (_ : n) -> ()
+      let make_n ~x  ?z  ~y  = { x; z }
+      let _ = make_n
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
+
+Test 11: Given a record type n annotated with 1 option field
+and 1 @main field, expose make_n with the main field at the 
+end, and without a unit in the signature
+  $ test12="
+  > type n = {
+  >   x: int ;
+  >   y: bool option [@main] ;
+  >   z : string option}[@@deriving make]"
+  $ echo "$test12" > test.ml
+  $ driver test.ml
+  type n = {
+    x: int ;
+    y: bool option [@main ];
+    z: string option }[@@deriving make]
+  include
+    struct
+      let _ = fun (_ : n) -> ()
+      let make_n ~x  ?z  ~y  = { x; z }
+      let _ = make_n
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]

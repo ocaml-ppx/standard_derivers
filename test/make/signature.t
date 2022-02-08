@@ -140,7 +140,7 @@ one field, expose make_l with the main field at the end
   [@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 10: Given a record type m annotated with `@main` for
-more than 1 field, throw error requesting 1 main field
+more than 1 field, throw error
   $ test10="
   > type m = {
   >   x: int ;
@@ -170,4 +170,24 @@ end, and without a unit in the signature
     z: string option }[@@deriving make]
   include
     sig [@@@ocaml.warning "-32"] val make_n : x:int -> ?z:string -> y:bool -> n
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
+
+Test 11: Given a record type n annotated with 1 option field
+and 1 @main field, expose make_n with the main field at the 
+end, and without a unit in the signature
+  $ test12="
+  > type n = {
+  >   x: int ;
+  >   y: bool option [@main] ;
+  >   z : string option}[@@deriving make]"
+  $ echo "$test12" > test.mli
+  $ driver test.mli 
+  type n = {
+    x: int ;
+    y: bool option [@main ];
+    z: string option }[@@deriving make]
+  include
+    sig
+      [@@@ocaml.warning "-32"]
+      val make_n : x:int -> ?z:string -> y:bool option -> n
     end[@@ocaml.doc "@inline"][@@merlin.hide ]

@@ -136,21 +136,21 @@ one field, expose make_l with the main field at the end
   type l = {
     x: int [@main ];
     y: bool }[@@deriving make]
-  include sig [@@@ocaml.warning "-32"] val make_l : y:bool -> x:int -> l end
+  include sig [@@@ocaml.warning "-32"] val make_l : y:bool -> int -> l end
   [@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 10: Given a record type m annotated with `@main` for
 more than 1 field, throw error
   $ test10="
   > type m = {
-  >   x: int ;
+  >   x: int;
   >   y: bool [@main] ;
   >   z : string [@main]}[@@deriving make]"
   $ echo "$test10" > test.mli
   $ driver test.mli 
-  File "test.mli", line 4, characters 2-19:
-  4 |   y: bool [@main] ;
-        ^^^^^^^^^^^^^^^^^
+  File "test.mli", line 5, characters 2-20:
+  5 |   z : string [@main]}[@@deriving make]
+        ^^^^^^^^^^^^^^^^^^
   Error: Duplicate [@deriving.make.main] annotation
   [1]
 
@@ -169,7 +169,7 @@ end, and without a unit in the signature
     y: bool [@main ];
     z: string option }[@@deriving make]
   include
-    sig [@@@ocaml.warning "-32"] val make_n : x:int -> ?z:string -> y:bool -> n
+    sig [@@@ocaml.warning "-32"] val make_n : x:int -> ?z:string -> bool -> n
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 11: Given a record type n annotated with 1 option field
@@ -189,5 +189,5 @@ end, and without a unit in the signature
   include
     sig
       [@@@ocaml.warning "-32"]
-      val make_n : x:int -> ?z:string -> y:bool option -> n
+      val make_n : x:int -> ?z:string -> bool option -> n
     end[@@ocaml.doc "@inline"][@@merlin.hide ]

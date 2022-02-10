@@ -154,7 +154,7 @@ one field, expose make_l with the main field at the end
   include
     struct
       let _ = fun (_ : l) -> ()
-      let make_l ~y  ~x  = { y }
+      let make_l ~y  x = { x; y }
       let _ = make_l
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
@@ -167,9 +167,9 @@ more than 1 field, throw error
   >   z : string [@main]}[@@deriving make]"
   $ echo "$test10" > test.ml
   $ driver test.ml
-  File "test.ml", line 4, characters 2-19:
-  4 |   y: bool [@main] ;
-        ^^^^^^^^^^^^^^^^^
+  File "test.ml", line 5, characters 2-20:
+  5 |   z : string [@main]}[@@deriving make]
+        ^^^^^^^^^^^^^^^^^^
   Error: Duplicate [@deriving.make.main] annotation
   [1]
 
@@ -190,7 +190,7 @@ end, and without a unit in the signature
   include
     struct
       let _ = fun (_ : n) -> ()
-      let make_n ~x  ?z  ~y  = { x; z }
+      let make_n ~x  ?z  y = { x; y; z }
       let _ = make_n
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
@@ -211,6 +211,6 @@ end, and without a unit in the signature
   include
     struct
       let _ = fun (_ : n) -> ()
-      let make_n ~x  ?z  ~y  = { x; z }
+      let make_n ~x  ?z  y = { x; y; z }
       let _ = make_n
     end[@@ocaml.doc "@inline"][@@merlin.hide ]

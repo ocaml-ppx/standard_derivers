@@ -2,6 +2,12 @@
 NOTICE: @@ocaml.doc and @@merlin.hide annotations
 & `include struct` boilerplate are added by ppxlib.
 ---------------------------------------------------
+The `-deriving-keep-w32 both` flag added after the 
+driver removes anonymous functions of the type: 
+-   let _ = fun (_ : t) -> ()
+-   let _ = make_t
+which are automatically added by ppxlib.
+---------------------------------------------------
 
 Test 1: Given a regular record type a, derive make_a
   $ test1="
@@ -9,16 +15,12 @@ Test 1: Given a regular record type a, derive make_a
   >   x: int ;
   >   y: bool }[@@deriving make]"
   $ echo "$test1" > test.ml
-  $ driver test.ml
+  $ driver -deriving-keep-w32 both test.ml
   type a = {
     x: int ;
     y: bool }[@@deriving make]
-  include
-    struct
-      let _ = fun (_ : a) -> ()
-      let make_a ~x  ~y  = { x; y }
-      let _ = make_a
-    end[@@ocaml.doc "@inline"][@@merlin.hide ]
+  include struct let make_a ~x  ~y  = { x; y } end[@@ocaml.doc "@inline"]
+  [@@merlin.hide ]
 
 Test 2: Given a nonrec type, throw error
   $ test2="
@@ -26,7 +28,7 @@ Test 2: Given a nonrec type, throw error
   >   x: int ;
   >   y: bool }[@@deriving make]"
   $ echo "$test2" > test.ml
-  $ driver test.ml
+  $ driver -deriving-keep-w32 both test.ml
   File "test.ml", lines 2-4, characters 0-28:
   2 | type nonrec b = {
   3 |   x: int ;
@@ -39,7 +41,7 @@ Test 3: Given a non-record type, throw error
   > type c = int * int
   > [@@deriving make]"
   $ echo "$test3" > test.ml
-  $ driver test.ml
+  $ driver -deriving-keep-w32 both test.ml
   File "test.ml", lines 2-3, characters 0-17:
   2 | type c = int * int
   3 | [@@deriving make]
@@ -52,12 +54,11 @@ Test 4: Given a private record type d, derive make_d
   >   x: int ;
   >   y: bool }[@@deriving make]"
   $ echo "$test4" > test.ml
-  $ driver test.ml
+  $ driver -deriving-keep-w32 both test.ml
   type d = private {
     x: int ;
     y: bool }[@@deriving make]
-  include struct let _ = fun (_ : d) -> () end[@@ocaml.doc "@inline"][@@merlin.hide
-                                                                      ]
+  include struct  end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 5: Given recursive types which are exclusively
 record types, derive 1 make function for each record 
@@ -70,7 +71,7 @@ record types, derive 1 make function for each record
   >   mutable y: bool ;
   >   z: e }[@@deriving make]"
   $ echo "$test5" > test.ml  
-  $ driver test.ml
+  $ driver -deriving-keep-w32 both test.ml
   type e = {
     v: f ;
     w: bool }
@@ -80,12 +81,8 @@ record types, derive 1 make function for each record
     z: e }[@@deriving make]
   include
     struct
-      let _ = fun (_ : e) -> ()
-      let _ = fun (_ : f) -> ()
       let make_e ~v  ~w  = { v; w }
-      let _ = make_e
       let make_f ~x  ~y  ~z  = { x; y; z }
-      let _ = make_f
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 6: Given recursive types with at least one 
@@ -96,18 +93,13 @@ record type, derive one make function for each type
   >   v: g ;
   >   w: bool }[@@deriving make]"
   $ echo "$test6" > test.ml  
-  $ driver test.ml
+  $ driver -deriving-keep-w32 both test.ml
   type g = (int * h)
   and h = {
     v: g ;
     w: bool }[@@deriving make]
-  include
-    struct
-      let _ = fun (_ : g) -> ()
-      let _ = fun (_ : h) -> ()
-      let make_h ~v  ~w  = { v; w }
-      let _ = make_h
-    end[@@ocaml.doc "@inline"][@@merlin.hide ]
+  include struct let make_h ~v  ~w  = { v; w } end[@@ocaml.doc "@inline"]
+  [@@merlin.hide ]
 
 Test 7: Given recursive types without any record
 types, throw error
@@ -115,102 +107,9 @@ types, throw error
   > type i = int*j
   > and i = bool*j [@@deriving make]"
   $ echo "$test7" > test.ml  
-  $ driver test.ml
+  $ driver -deriving-keep-w32 both test.ml
   File "test.ml", lines 2-3, characters 0-32:
   2 | type i = int*j
   3 | and i = bool*j [@@deriving make]
   Error: make can only be applied on type definitions in which at least one type definition is a record.
   [1]
-
-Test 8: Given a record type k with an `option` 
-field, derive make_k
-  $ test8="
-  > type k = {
-  >   x: int ;
-  >   y: bool option }[@@deriving make]"
-  $ echo "$test8" > test.ml
-  $ driver test.ml
-  type k = {
-    x: int ;
-    y: bool option }[@@deriving make]
-  include
-    struct
-      let _ = fun (_ : k) -> ()
-      let make_k ~x  ?y  () = { x; y }
-      let _ = make_k
-    end[@@ocaml.doc "@inline"][@@merlin.hide ]
-
-Test 9: Given a record type l annotated with `@main` for
-one field, expose make_l with the main field at the end
-  $ test9="
-  > type l = {
-  >   x: int [@main] ;
-  >   y: bool }[@@deriving make]"
-  $ echo "$test9" > test.ml
-  $ driver test.ml
-  type l = {
-    x: int [@main ];
-    y: bool }[@@deriving make]
-  include
-    struct
-      let _ = fun (_ : l) -> ()
-      let make_l ~y  x = { x; y }
-      let _ = make_l
-    end[@@ocaml.doc "@inline"][@@merlin.hide ]
-
-Test 10: Given a record type m annotated with `@main` for
-more than 1 field, throw error
-  $ test10="
-  > type m = {
-  >   x: int ;
-  >   y: bool [@main] ;
-  >   z : string [@main]}[@@deriving make]"
-  $ echo "$test10" > test.ml
-  $ driver test.ml
-  File "test.ml", line 5, characters 2-20:
-  5 |   z : string [@main]}[@@deriving make]
-        ^^^^^^^^^^^^^^^^^^
-  Error: Duplicate [@deriving.make.main] annotation
-  [1]
-
-Test 11: Given a record type n annotated with 1 option field
-and 1 @main field, expose make_n with the main field at the 
-end, and without a unit in the signature
-  $ test11="
-  > type n = {
-  >   x: int ;
-  >   y: bool [@main] ;
-  >   z : string option}[@@deriving make]"
-  $ echo "$test11" > test.ml
-  $ driver test.ml
-  type n = {
-    x: int ;
-    y: bool [@main ];
-    z: string option }[@@deriving make]
-  include
-    struct
-      let _ = fun (_ : n) -> ()
-      let make_n ~x  ?z  y = { x; y; z }
-      let _ = make_n
-    end[@@ocaml.doc "@inline"][@@merlin.hide ]
-
-Test 11: Given a record type n annotated with 1 option field
-and 1 @main field, expose make_n with the main field at the 
-end, and without a unit in the signature
-  $ test12="
-  > type n = {
-  >   x: int ;
-  >   y: bool option [@main] ;
-  >   z : string option}[@@deriving make]"
-  $ echo "$test12" > test.ml
-  $ driver test.ml
-  type n = {
-    x: int ;
-    y: bool option [@main ];
-    z: string option }[@@deriving make]
-  include
-    struct
-      let _ = fun (_ : n) -> ()
-      let make_n ~x  ?z  y = { x; y; z }
-      let _ = make_n
-    end[@@ocaml.doc "@inline"][@@merlin.hide ]

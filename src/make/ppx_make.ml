@@ -6,37 +6,23 @@
    open Ppxlib
    open Ast_builder.Default
    
-   module Construct = struct
-     (* Additional AST construction helpers *)
-   
-     let apply_type ~loc ~ty_name ~tps = 
-      ptyp_constr ~loc (Located.lident ~loc ty_name) tps
-     ;;
-
-     let lambda ~loc patterns body =
-      List.fold_left (fun acc (lab, pat) ->
-       pexp_fun ~loc lab None pat acc) body patterns
-     ;;
-  
-     let lambda_sig ~loc arg_tys body_ty =
-      List.fold_left (fun acc (lab, arg_ty) ->
-       ptyp_arrow ~loc lab arg_ty acc) body_ty arg_tys 
-     ;;
-
-     let record ~loc pairs =
-      pexp_record
-        ~loc
-        (List.map (fun (name, exp) -> Located.lident ~loc name, exp) pairs)
-        None
-     ;;
-
-     let sig_item ~loc name typ =
-      psig_value ~loc (value_description ~loc ~name:(Located.mk ~loc name) ~type_:typ ~prim:[])
+   module Annotations = struct 
+    let main_attr = 
+      Attribute.declare 
+        "standard_derivers.make.main" 
+        Attribute.Context.label_declaration
+        Ast_pattern.(pstr nil)
+        ()
     ;;
-    
-     let str_item ~loc name body =
-       pstr_value ~loc Nonrecursive [ value_binding ~loc ~pat:(pvar ~loc name) ~expr:body ]
-     ;;
+
+    let find_main labels =
+      List.fold_left (fun (main_label, labels) ({ pld_loc; _ } as label) ->
+          match Attribute.get main_attr label, main_label with
+          | Some _, Some _ -> Location.raise_errorf ~loc:pld_loc "Duplicate [@deriving.%s.main] annotation" "make"
+          | Some _, None -> Some label, labels
+          | None, _ -> main_label, label :: labels)
+          (None, []) labels
+    ;;
    end
 
    module Check = struct
@@ -65,32 +51,57 @@
       (match private_ with
             | Private -> Location.raise_errorf ~loc "We cannot expose functions that explicitly create private records."
             | Public -> () )
+    ;;
 
     let has_option labels = List.exists (fun (name, _) -> match name with 
     | Optional _ -> true
     | _ -> false) labels
-
-    let find_main labels =
-      List.fold_left (fun (main, labels) ({ pld_type; pld_loc; pld_attributes ; _ } as label) ->
-        if Ppx_deriving.(pld_type.ptyp_attributes @ pld_attributes |>
-                         attr ~deriver:"make" "main" |> Arg.get_flag ~deriver:"make") then
-          match main with
-          | Some _ -> Location.raise_errorf ~loc:pld_loc "Duplicate [@deriving.%s.main] annotation" "make"
-          | None -> Some label, labels
-        else
-          main, label :: labels)
-          (None, []) labels
+    ;;
   end
+
+   module Construct = struct
+     (* Additional AST construction helpers *)
+   
+     let apply_type ~loc ~ty_name ~tps = 
+      ptyp_constr ~loc (Located.lident ~loc ty_name) tps
+     ;;
+
+     let lambda ~loc patterns body =
+      List.fold_left (fun acc (lab, pat) ->
+       pexp_fun ~loc lab None pat acc) body patterns
+     ;;
+  
+     let lambda_sig ~loc arg_tys body_ty =
+      List.fold_left (fun acc (lab, arg_ty) ->
+       ptyp_arrow ~loc lab arg_ty acc) body_ty arg_tys 
+     ;;
+
+     let record ~loc pairs =
+      pexp_record
+        ~loc
+        (List.map (fun (name, exp) -> Located.lident ~loc name, exp) pairs)
+        None
+     ;;
+
+     let sig_item ~loc name typ =
+      psig_value ~loc (value_description ~loc ~name:(Located.mk ~loc name) ~type_:typ ~prim:[])
+     ;;
+    
+     let str_item ~loc name body =
+       pstr_value ~loc Nonrecursive [ value_binding ~loc ~pat:(pvar ~loc name) ~expr:body ]
+     ;;
+   end
   
    module Gen_sig = struct
      let label_arg name ty = match ty with 
      (* a' option               -> ?name        , a' *)
      | [%type: [%t? a'] option] -> Optional name, a'
      | _ -> Labelled name, ty
-
+     ;;
+     
      let create_make_sig ~loc ~ty_name ~tps label_decls =
        let record = Construct.apply_type ~loc ~ty_name ~tps in
-       let main_arg, label_decls = Check.find_main label_decls in
+       let main_arg, label_decls = Annotations.find_main label_decls in
        let derive_type label_decl =
          let { pld_name = name; pld_type = ty; _ } = label_decl in
          label_arg name.txt ty
@@ -144,8 +155,8 @@
      ;;
    
      let create_make_fun ~loc ~record_name label_decls =
-      let names = List.map (fun { pld_name = n; _ } -> n.txt, evar ~loc n.txt) label_decls in
-       let main_arg, label_decls = Check.find_main label_decls in
+      let field_labels = List.map (fun { pld_name = n; _ } -> n.txt, evar ~loc n.txt) label_decls in
+       let main_arg, label_decls = Annotations.find_main label_decls in
        let derive_pattern label_decl = 
         let { pld_name = name; pld_type = ty; _ } = label_decl in
          label_arg ~loc name.txt ty
@@ -158,7 +169,7 @@
         | None when Check.has_option patterns -> add_unit patterns
         | None -> patterns
        in
-       let create_record = Construct.record ~loc names in
+       let create_record = Construct.record ~loc field_labels in
        let derive_lambda = Construct.lambda ~loc patterns create_record in
        let fun_name = "make_" ^ record_name in
        Construct.str_item ~loc fun_name derive_lambda
@@ -189,9 +200,16 @@
    end
 
    let make =
+     let attributes = [ 
+       Attribute.T Annotations.main_attr 
+     ] in
     Deriving.add "make"
        ~str_type_decl:
-        (Deriving.Generator.make_noarg Gen_struct.generate)
+        (Deriving.Generator.make_noarg 
+          ~attributes
+          Gen_struct.generate)
        ~sig_type_decl:
-        (Deriving.Generator.make_noarg Gen_sig.generate)
+        (Deriving.Generator.make_noarg 
+          ~attributes  
+          Gen_sig.generate)
    ;;

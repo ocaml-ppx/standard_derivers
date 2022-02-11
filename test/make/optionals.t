@@ -12,22 +12,22 @@ at the end of its signature
   >   y: bool option }[@@deriving make]"
   $ echo "$test1" > test.ml
   $ driver test.ml
-  type k = {
+  type a = {
     x: int ;
     y: bool option }[@@deriving make]
   include
     struct
-      let _ = fun (_ : k) -> ()
-      let make_k ~x  ?y  () = { x; y }
-      let _ = make_k
+      let _ = fun (_ : a) -> ()
+      let make_a ~x  ?y  () = { x; y }
+      let _ = make_a
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
   $ echo "$test1" > test.mli
   $ driver test.mli 
-  type k = {
+  type a = {
     x: int ;
     y: bool option }[@@deriving make]
   include
-    sig [@@@ocaml.warning "-32"] val make_k : x:int -> ?y:bool -> unit -> k end
+    sig [@@@ocaml.warning "-32"] val make_a : x:int -> ?y:bool -> unit -> a end
   [@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 2: Given a record type b annotated with `@main` for
@@ -39,21 +39,21 @@ parameter
   >   y: bool }[@@deriving make]"
   $ echo "$test2" > test.ml
   $ driver test.ml
-  type l = {
+  type b = {
     x: int [@main ];
     y: bool }[@@deriving make]
   include
     struct
-      let _ = fun (_ : l) -> ()
-      let make_l ~y  x = { x; y }
-      let _ = make_l
+      let _ = fun (_ : b) -> ()
+      let make_b ~y  x = { x; y }
+      let _ = make_b
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
   $ echo "$test2" > test.mli
   $ driver test.mli 
-  type l = {
+  type b = {
     x: int [@main ];
     y: bool }[@@deriving make]
-  include sig [@@@ocaml.warning "-32"] val make_l : y:bool -> int -> l end
+  include sig [@@@ocaml.warning "-32"] val make_b : y:bool -> int -> b end
   [@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 3: Given a record type c annotated with `@main` for 
@@ -88,24 +88,24 @@ parameter, and does not have a unit in the signature
   >   z : string option}[@@deriving make]"
   $ echo "$test4" > test.ml
   $ driver test.ml
-  type n = {
+  type d = {
     x: int ;
     y: bool [@main ];
     z: string option }[@@deriving make]
   include
     struct
-      let _ = fun (_ : n) -> ()
-      let make_n ~x  ?z  y = { x; y; z }
-      let _ = make_n
+      let _ = fun (_ : d) -> ()
+      let make_d ~x  ?z  y = { x; y; z }
+      let _ = make_d
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
   $ echo "$test4" > test.mli
   $ driver test.mli 
-  type n = {
+  type d = {
     x: int ;
     y: bool [@main ];
     z: string option }[@@deriving make]
   include
-    sig [@@@ocaml.warning "-32"] val make_n : x:int -> ?z:string -> bool -> n
+    sig [@@@ocaml.warning "-32"] val make_d : x:int -> ?z:string -> bool -> d
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 5: Given record type e with 2 option fields, one 
@@ -119,22 +119,22 @@ the main field as the last param, which is of type
   >   z : string option}[@@deriving make]"
   $ echo "$test5" > test.ml
   $ driver -deriving-keep-w32 both test.ml
-  type n = {
+  type e = {
     x: int ;
     y: bool option [@main ];
     z: string option }[@@deriving make]
-  include struct let make_n ~x  ?z  y = { x; y; z } end[@@ocaml.doc "@inline"]
+  include struct let make_e ~x  ?z  y = { x; y; z } end[@@ocaml.doc "@inline"]
   [@@merlin.hide ]
   $ echo "$test5" > test.mli
   $ driver test.mli 
-  type n = {
+  type e = {
     x: int ;
     y: bool option [@main ];
     z: string option }[@@deriving make]
   include
     sig
       [@@@ocaml.warning "-32"]
-      val make_n : x:int -> ?z:string -> bool option -> n
+      val make_e : x:int -> ?z:string -> bool option -> e
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 6: Testing ppxlib: Unexpected attribute payload 

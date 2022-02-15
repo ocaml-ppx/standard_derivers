@@ -7,6 +7,14 @@
    open Ast_builder.Default
    
    module Annotations = struct 
+    let default_attr = 
+      Attribute.declare 
+        "standard_derivers.make.default" 
+        Attribute.Context.label_declaration
+        Ast_pattern.(single_expr_payload __)
+        (fun expr -> expr)
+    ;;
+
     let main_attr = 
       Attribute.declare 
         "standard_derivers.make.main" 
@@ -53,7 +61,7 @@
             | Public -> () )
     ;;
 
-    let has_option labels = List.exists (fun (name, _) -> match name with 
+    let is_optional labels = List.exists (fun (name, _) -> match name with 
     | Optional _ -> true
     | _ -> false) labels
     ;;
@@ -93,19 +101,21 @@
    end
   
    module Gen_sig = struct
-     let label_arg name ty = match ty with 
-     (* a' option               -> ?name        , a' *)
-     | [%type: [%t? a'] option] -> Optional name, a'
-     | _ -> Labelled name, ty
+     let label_arg label_decl =
+       let { pld_name = name; pld_type = ty; _ } = label_decl in
+      match (Attribute.get Annotations.default_attr label_decl),  ty with
+      (* @default -> Optional  *)
+      | Some _, _ -> Optional name.txt, ty
+      (* option type -> Optional *)
+      | _, [%type: [%t? a'] option] -> Optional name.txt, a'
+      (* regular field -> Labelled *)
+      | _ -> Labelled name.txt, ty
      ;;
      
      let create_make_sig ~loc ~ty_name ~tps label_decls =
        let record = Construct.apply_type ~loc ~ty_name ~tps in
        let main_arg, label_decls = Annotations.find_main label_decls in
-       let derive_type label_decl =
-         let { pld_name = name; pld_type = ty; _ } = label_decl in
-         label_arg name.txt ty
-       in
+       let derive_type label_decl = label_arg label_decl in
        let types = List.map derive_type label_decls in
        let add_unit types = (
          Nolabel, 
@@ -114,7 +124,7 @@
        let types = match main_arg with 
         | Some { pld_type ; _ } 
             -> (Nolabel, pld_type)::types
-        | None when Check.has_option types -> add_unit types
+        | None when Check.is_optional types -> add_unit types
         | None -> types
        in
        let t = Construct.lambda_sig ~loc types record in
@@ -148,25 +158,24 @@
    end
    
    module Gen_struct = struct
-     let label_arg ~loc name ty =
-         match ty with
-         | [%type: [%t? _] option] -> Optional name, pvar ~loc name
-         | _ -> Labelled name, pvar ~loc name
+     let label_arg ~loc label_decl =
+      let{ pld_name = name; pld_type = ty; _ } = label_decl in
+         match (Attribute.get Annotations.default_attr label_decl), ty with
+         | Some _ , _
+         | _, [%type: [%t? _] option] -> Optional name.txt, pvar ~loc name.txt
+         | _ -> Labelled name.txt, pvar ~loc name.txt
      ;;
    
      let create_make_fun ~loc ~record_name label_decls =
       let field_labels = List.map (fun { pld_name = n; _ } -> n.txt, evar ~loc n.txt) label_decls in
        let main_arg, label_decls = Annotations.find_main label_decls in
-       let derive_pattern label_decl = 
-        let { pld_name = name; pld_type = ty; _ } = label_decl in
-         label_arg ~loc name.txt ty
-       in 
+       let derive_pattern label_decl = label_arg ~loc label_decl in 
        let patterns = List.map derive_pattern label_decls in
        let add_unit patterns = (Nolabel, punit ~loc)::patterns in
        let patterns = match main_arg with 
         | Some { pld_name = { txt = name ; _ } ; _ } 
             -> (Nolabel, pvar ~loc name)::patterns
-        | None when Check.has_option patterns -> add_unit patterns
+        | None when Check.is_optional patterns -> add_unit patterns
         | None -> patterns
        in
        let create_record = Construct.record ~loc field_labels in
@@ -200,9 +209,9 @@
    end
 
    let make =
-     let attributes = [ 
-       Attribute.T Annotations.main_attr 
-     ] in
+     let attributes = 
+      (Attribute.T Annotations.default_attr)::[Attribute.T Annotations.main_attr] 
+     in
     Deriving.add "make"
        ~str_type_decl:
         (Deriving.Generator.make_noarg 

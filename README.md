@@ -36,6 +36,10 @@ One technical advantage of this project is that it will increase the number of f
 
 All those points mentioned above might help folks move even more from the sustained `ppx_deriving` to the maintained `ppxlib`.
 
+#### Allow to avoid PPX dependencies
+
+One important feature of `Ppxlib.Deriving` is `deriving_inline`. When using a deriver via `deriving_inline`, both the deriver and the PPX library behind it are only required for development. So, in contrary to `ppx_deriving.std`, this project will allow to use the standard derivers without declaring them or anything related to them as a hard dependency.
+
 ## Who's implementing this project?
 
 @ayc9 is implementing this project as part of an [Outreachy internship](https://www.outreachy.org/) with the OCaml community. The derivers we plan to include are originally written by Jane Street (`ord` and `eq` will come from [`ppx_compare`](https://github.com/janestreet/ppx_compare); the basic structure of `make` will come from [`ppx_fields_conv`](https://github.com/janestreet/ppx_fields_conv)) and by @thierry-martinez (`show` and `pp` will come from [`ppx_show`](https://github.com/thierry-martinez/ppx_show)).

@@ -49,11 +49,15 @@ Test 4: Given a private type, throw error
   >   y: bool }[@@deriving make]"
   $ echo "$test4" > test.mli
   $ driver test.mli
-  File "test.mli", line 2, characters 5-6:
-  2 | type d = private {
-           ^
-  Error: We cannot expose functions that explicitly create private records.
-  [1]
+  type d = private {
+    x: int ;
+    y: bool }[@@deriving make]
+  include
+    sig
+      [@@@ocaml.warning "-32"]
+      [%%ocaml.error
+        "We cannot expose functions that explicitly create private records."]
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 5: Given recursive types which are exclusively
 record types, expose 1 make function for each record 

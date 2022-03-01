@@ -87,3 +87,29 @@ the main field as the last param, which is of type
       [@@@ocaml.warning "-32"]
       val make_c : x:int -> ?z:string -> bool option -> c
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
+
+Test 4: Given a record type `d` with a `list` field, 
+make_d will accept an optional param with default value 
+`[]` and will have a unit at the end of its signature
+  $ test4="
+  > type d = {
+  >   x: int list ;
+  >   y: bool }[@@deriving make]"
+  $ echo "$test4" > test.mli
+  $ driver test.mli
+  type d = {
+    x: int list ;
+    y: bool }[@@deriving make]
+  include
+    sig
+      [@@@ocaml.warning "-32"]
+      val make_d : ?x:int list -> y:bool -> unit -> d
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
+  $ echo "$test4" > test.ml
+  $ driver -deriving-keep-w32 both test.ml
+  type d = {
+    x: int list ;
+    y: bool }[@@deriving make]
+  include struct let make_d ?(x= [])  ~y  () = { x; y } end[@@ocaml.doc
+                                                             "@inline"]
+  [@@merlin.hide ]

@@ -13,5 +13,6 @@
  (name standard_derivers)
  (synopsis "Standard PPX derivers")
  (depends
+  (ocaml (>= 4.08))
   (ppxlib (>= 0.18.0)))
  (allow_empty))

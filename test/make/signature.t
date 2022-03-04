@@ -16,33 +16,37 @@ Test 1: Given a regular record type a, expose make_a
   include sig [@@@ocaml.warning "-32"] val make_a : x:int -> y:bool -> a end
   [@@ocaml.doc "@inline"][@@merlin.hide ]
 
-Test 2: Given a nonrec type, throw error
+Test 2: Given a nonrec type, embed error
   $ test2="
   > type nonrec b = {
   >   x: int ;
   >   y: bool }[@@deriving make]"
   $ echo "$test2" > test.mli
   $ driver test.mli
-  File "test.mli", lines 2-4, characters 0-28:
-  2 | type nonrec b = {
-  3 |   x: int ;
-  4 |   y: bool }[@@deriving make]
-  Error: nonrec is not compatible with the `make' preprocessor.
-  [1]
+  type nonrec b = {
+    x: int ;
+    y: bool }[@@deriving make]
+  include
+    sig
+      [@@@ocaml.warning "-32"]
+      [%%ocaml.error "nonrec is not compatible with the `make' preprocessor."]
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
-Test 3: Given a non-record type, throw error
+Test 3: Given a non-record type, embed error
   $ test3="
   > type c = int * int
   > [@@deriving make]"
   $ echo "$test3" > test.mli
   $ driver test.mli
-  File "test.mli", lines 2-3, characters 0-17:
-  2 | type c = int * int
-  3 | [@@deriving make]
-  Error: Unsupported use of make (you can only use it on records).
-  [1]
+  type c = (int * int)[@@deriving make]
+  include
+    sig
+      [@@@ocaml.warning "-32"]
+      [%%ocaml.error
+        "Unsupported use of make (you can only use it on records)."]
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
-Test 4: Given a private type, throw error
+Test 4: Given a private type, embed error
   $ test4="
   > type d = private {
   >   x: int ;
@@ -102,14 +106,17 @@ record type, expose 1 make function for each type
   [@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 7: Given recursive types without any record
-types, throw error
+types, embed error
   $ test7="
   > type i = int*j
   > and j = bool*i [@@deriving make]"
   $ echo "$test7" > test.mli  
   $ driver test.mli
-  File "test.mli", lines 2-3, characters 0-32:
-  2 | type i = int*j
-  3 | and j = bool*i [@@deriving make]
-  Error: make can only be applied on type definitions in which at least one type definition is a record.
-  [1]
+  type i = (int * j)
+  and j = (bool * i)[@@deriving make]
+  include
+    sig
+      [@@@ocaml.warning "-32"]
+      [%%ocaml.error
+        "make can only be applied on type definitions in which at least one type definition is a record."]
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]

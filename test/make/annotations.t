@@ -32,26 +32,37 @@ parameter
   [@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 2: Given a record type annotated with `@main` for 
-more than 1 field, throw error
+more than 1 field, embed an error for each duplicate
   $ test2="
   > type b = {
-  >   x: int ;
+  >   x: int [@main] ;
   >   y: bool [@main] ;
   >   z : string [@main]}[@@deriving make]"
   $ echo "$test2" > test.ml
   $ driver -deriving-keep-w32 both test.ml
-  File "test.ml", line 5, characters 2-20:
-  5 |   z : string [@main]}[@@deriving make]
-        ^^^^^^^^^^^^^^^^^^
-  Error: Duplicate [@deriving.make.main] annotation
-  [1]
+  type b = {
+    x: int [@main ];
+    y: bool [@main ];
+    z: string [@main ]}[@@deriving make]
+  include
+    struct
+      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
+      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
+      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
   $ echo "$test2" > test.mli
   $ driver test.mli 
-  File "test.mli", line 5, characters 2-20:
-  5 |   z : string [@main]}[@@deriving make]
-        ^^^^^^^^^^^^^^^^^^
-  Error: Duplicate [@deriving.make.main] annotation
-  [1]
+  type b = {
+    x: int [@main ];
+    y: bool [@main ];
+    z: string [@main ]}[@@deriving make]
+  include
+    sig
+      [@@@ocaml.warning "-32"]
+      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
+      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
+      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 
 Test 3: @default makes the field optional
@@ -77,18 +88,18 @@ Test 3: @default makes the field optional
                                                                       ]
 
 Test 4: Given a record type with both `@main` and 
-`@default` for the same field, throw error
+`@default` for the same field, embed error
   $ test4="
   > type d = {
   >   x: int [@default 5] [@main] ;
   >   y: bool }[@@deriving make]"
   $ echo "$test4" > test.ml
   $ driver -deriving-keep-w32 both test.ml
-  File "test.ml", line 3, characters 2-31:
-  3 |   x: int [@default 5] [@main] ;
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Cannot use both @default and @main
-  [1]
+  type d = {
+    x: int [@default 5][@main ];
+    y: bool }[@@deriving make]
+  include struct [%%ocaml.error "Cannot use both @default and @main"] end
+  [@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 5: Testing ppxlib: Unexpected attribute payload 
   $ test5="

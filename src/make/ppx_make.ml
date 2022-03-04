@@ -5,8 +5,6 @@
 
    open Ppxlib
    open Ast_builder.Default
-   
-   let extend_error ~loc err_msg = [psig_extension ~loc (Location.error_extensionf ~loc err_msg) []] 
 
    module Annotations = struct 
     let default_attr = 
@@ -26,22 +24,26 @@
     ;;
 
     let find_main labels =
-      List.fold_left (fun (main_label, labels) ({ pld_loc; _ } as label) ->
-        match Attribute.get main_attr label, main_label with
-        | Some _, Some _ -> Location.raise_errorf ~loc:pld_loc "Duplicate [@deriving.%s.main] annotation" "make"
-        | Some _, None -> Some label, labels
-        | None, _ -> main_label, label :: labels
-      )
-          (None, []) labels
+      let main_labels, labels = List.fold_left (fun (main_labels, labels) label ->
+        match Attribute.get main_attr label with
+        | Some _ -> label::main_labels, labels
+        | None -> main_labels, label :: labels
+      ) ([], []) labels in 
+      match main_labels with 
+      | [] -> Ok (None, labels)
+      | [ main_label ] -> Ok (Some main_label, labels)
+      | main_labels -> Error (List.map(fun ({ pld_loc; _ }) -> 
+        Location.error_extensionf ~loc:pld_loc "Duplicate [@deriving.%s.main] annotation" "make"
+      ) main_labels )
     ;;
    end
 
    module Check = struct
     let is_derivable ~loc rec_flag tds =
-      (match rec_flag with
+      match rec_flag with
        | Nonrecursive ->
-         Location.raise_errorf ~loc "nonrec is not compatible with the `make' preprocessor."
-       | _ -> ());
+         Error (Location.error_extensionf ~loc "nonrec is not compatible with the `make' preprocessor.")
+       | _ ->
       let is_record td =
         match td.ptype_kind with
         | Ptype_record _ -> true
@@ -49,19 +51,14 @@
       in
       if not (List.exists is_record tds)
       then
-        Location.raise_errorf
+        Error (Location.error_extensionf
           ~loc
           (match tds with
            | [ _ ] -> "Unsupported use of make (you can only use it on records)."
            | _ ->
              "make can only be applied on type definitions in which at least one \
-              type definition is a record.")
-    ;;
-
-    let is_public ~private_ = 
-      (match private_ with
-            | Private -> false
-            | Public -> true )
+              type definition is a record."))
+           else Ok ()
     ;;
 
     let is_optional labels = List.exists (fun (name, _) -> match name with 
@@ -107,19 +104,21 @@
      let label_arg label_decl =
        let { pld_name = name; pld_type = ty; _ } = label_decl in
       match (Attribute.get Annotations.default_attr label_decl),  ty with
-      (* @default -> Optional  *)
+      (* [@default _ ] -> Optional *)
       | Some _, _ -> Optional name.txt, ty
-      (* option type -> Optional *)
+      (* `option` type -> Optional *)
       | _, [%type: [%t? a'] option] -> Optional name.txt, a'
-      (* list type -> Optional *)
+      (* `list` type   -> Optional *)
       | _, [%type: [%t? _] list] -> Optional name.txt, ty
-      (* regular field -> Labelled *)
+      (* Regular field -> Labelled *)
       | _ -> Labelled name.txt, ty
      ;;
      
      let create_make_sig ~loc ~ty_name ~tps label_decls =
        let record = Construct.apply_type ~loc ~ty_name ~tps in
-       let main_arg, label_decls = Annotations.find_main label_decls in
+       match Annotations.find_main label_decls with 
+        | Error e -> List.map(fun e ->  psig_extension ~loc (e) [] ) e
+        | Ok (main_arg, label_decls) -> 
        let types = List.map label_arg label_decls in
        let add_unit types = (
          Nolabel, 
@@ -133,7 +132,7 @@
        in
        let t = Construct.lambda_sig ~loc types record in
        let fun_name = "make_" ^ ty_name in
-       Construct.sig_item ~loc fun_name t
+       [Construct.sig_item ~loc fun_name t]
      ;;
 
      let derive_per_td (td : type_declaration) : signature =
@@ -149,18 +148,20 @@
        let tps = List.map (fun (tp, _variance) -> tp) ptype_params in
        match ptype_kind with
        | Ptype_record label_decls ->
-        if Check.is_public ~private_ then 
+        if private_ = Public then  
          let derived_item = create_make_sig ~loc ~ty_name ~tps label_decls in
-        [ derived_item ]
+        derived_item
       else 
-        extend_error ~loc "We cannot expose functions that explicitly create private records."
+        [psig_extension ~loc 
+          (Location.error_extensionf ~loc "We cannot expose functions that explicitly create private records.") [] ]
        | _ -> []
      ;;
    
      let generate ~ctxt (rec_flag, tds) =
       let loc = Expansion_context.Deriver.derived_item_loc ctxt in
-       Check.is_derivable ~loc rec_flag tds;
-       List.concat_map (derive_per_td) tds
+       match Check.is_derivable ~loc rec_flag tds with 
+       | Error e -> [psig_extension ~loc (e) [] ]
+       | Ok () -> List.concat_map (derive_per_td) tds
      ;;
    end
    
@@ -182,21 +183,26 @@
    
      let create_make_fun ~loc ~record_name label_decls =
       let field_labels = List.map (fun { pld_name = n; _ } -> n.txt, evar ~loc n.txt) label_decls in
-      let main_arg, label_decls = Annotations.find_main label_decls in
+      match Annotations.find_main label_decls with
+      | Error e -> List.map(fun e -> pstr_extension ~loc (e) []) e
+      | Ok (main_arg, label_decls) ->
       let patterns = List.map (derive_pattern ~loc) label_decls in
       let add_unit patterns = (Nolabel, punit ~loc, None)::patterns in
       let patterns = match main_arg with 
        | Some ({ pld_name = { txt = name ; _ } ; pld_loc; _ } as pld)
            -> (match (Attribute.get Annotations.default_attr pld) with
-              | Some _ -> Location.raise_errorf ~loc:pld_loc "Cannot use both @default and @main"
-              | None -> (Nolabel, pvar ~loc name, None)::patterns)
-       | None when is_optional patterns -> add_unit patterns
-       | None -> patterns
+              | Some _ -> Error (Location.error_extensionf ~loc:pld_loc "Cannot use both @default and @main")
+              | None -> Ok ((Nolabel, pvar ~loc name, None)::patterns))
+       | None when is_optional patterns -> Ok (add_unit patterns)
+       | None -> Ok patterns
       in
+      match patterns with 
+      | Error e -> [pstr_extension ~loc (e) []]
+      | Ok patterns -> 
       let create_record = Construct.record ~loc field_labels in
       let derive_lambda = Construct.lambda ~loc patterns create_record in
       let fun_name = "make_" ^ record_name in
-       Construct.str_item ~loc fun_name derive_lambda
+       [Construct.str_item ~loc fun_name derive_lambda]
      ;;
     
      let derive_per_td (td : type_declaration) : structure =
@@ -213,14 +219,15 @@
         (match private_ with
         | Private -> []
         | Public -> let derived_item = create_make_fun ~loc ~record_name label_decls in
-        [ derived_item ])
+        derived_item )
        | _ -> []
      ;;
    
      let generate ~ctxt (rec_flag, tds) =
        let loc = Expansion_context.Deriver.derived_item_loc ctxt in
-       Check.is_derivable ~loc rec_flag tds;
-       List.concat_map (derive_per_td) tds
+       match Check.is_derivable ~loc rec_flag tds with 
+       | Error e -> [pstr_extension ~loc (e) [] ]
+       | Ok () -> List.concat_map (derive_per_td) tds
      ;;
    end
 

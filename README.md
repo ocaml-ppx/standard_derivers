@@ -40,4 +40,23 @@ All those points mentioned above might help folks move even more from the sustai
 
 @ayc9 is implementing this project as part of an [Outreachy internship](https://www.outreachy.org/) with the OCaml community. The derivers we plan to include are originally written by Jane Street (`ord` and `eq` will come from [`ppx_compare`](https://github.com/janestreet/ppx_compare); the basic structure of `make` will come from [`ppx_fields_conv`](https://github.com/janestreet/ppx_fields_conv)) and by @thierry-martinez (`show` and `pp` will come from [`ppx_show`](https://github.com/thierry-martinez/ppx_show)).
 
+## `make` 
 
+The `make` deriver generates a constructor function for a given record type `t`. The derived function, `make_t`, accepts labelled arguments for each field in the record. `make_t` is then used to construct records of type `t`. Note that:
+- A `[@main]` annotation can be added to specify a field to be the last argument of the constructor function. This main argument will not be labelled.
+- A `[@default]` annotation can be added to specify a default value for a given field. Its corresponding argument will be optional. 
+- Fields of `list` type are automatically set with a default of `[]`.
+- If the generated constructor function has optional arguments, it will require the unit `()` as a last argument, except in the case it also has a main argument. 
+
+``` ocaml
+type t = {
+  x : int;
+  l : int list;
+  o : int option;
+  m : int [@main];
+  d : int [@default 0] 
+} [@@deriving make];;
+
+val make_t : x:int -> ?l:int list -> ?o:int -> ?d:int -> int -> t
+let make_t ~x  ?(l= [])  ?o  ?(d= 0)  m = { x; l; o; m; d }
+```

@@ -1,5 +1,4 @@
-2022-01-XX
+Unreleased
 -----
 
-- Adding implementation of first standard deriver, (`make`), along with tests and changelog
-- Drafting readme to detail documentation for `make` 
+- Implementation of standard deriver: `make` 

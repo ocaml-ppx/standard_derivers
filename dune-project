@@ -12,6 +12,7 @@
 (package
  (name standard_derivers)
  (synopsis "Standard PPX derivers")
+ (description "Useful and up-to-date PPX derivers for common tasks.")
  (depends
   (ocaml (>= 4.08))
   (ppxlib (>= 0.18.0)))

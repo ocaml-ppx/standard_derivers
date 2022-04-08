@@ -34,7 +34,8 @@ Test 2: Given a nonrec type, embed error
     y: bool }[@@deriving make]
   include
     struct
-      [%%ocaml.error "nonrec is not compatible with the `make' preprocessor."]
+      [%%ocaml.error
+        "deriver make: nonrec is not compatible with the `make' preprocessor."]
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 3: Given a non-record type, embed error
@@ -47,7 +48,7 @@ Test 3: Given a non-record type, embed error
   include
     struct
       [%%ocaml.error
-        "Unsupported use of make (you can only use it on records)."]
+        "deriver make: Unsupported use of make (you can only use it on records)."]
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 4: Given a private record type d, derive make_d
@@ -88,7 +89,7 @@ record types, derive 1 make function for each record
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 6: Given recursive types with at least one 
-record type, derive one make function for each type 
+record type, derive one make function for each record 
   $ test6="
   > type g = int*h
   > and h = {
@@ -115,5 +116,5 @@ types, embed error
   include
     struct
       [%%ocaml.error
-        "make can only be applied on type definitions in which at least one type definition is a record."]
+        "deriver make: make can only be applied on type definitions in which at least one type definition is a record."]
     end[@@ocaml.doc "@inline"][@@merlin.hide ]

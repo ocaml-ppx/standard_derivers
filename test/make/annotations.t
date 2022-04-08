@@ -46,9 +46,12 @@ more than 1 field, embed an error for each duplicate
     z: string [@main ]}[@@deriving make]
   include
     struct
-      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
-      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
-      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
+      [%%ocaml.error
+        "deriver make: Duplicate [@deriving.make.main] annotation"]
+      [%%ocaml.error
+        "deriver make: Duplicate [@deriving.make.main] annotation"]
+      [%%ocaml.error
+        "deriver make: Duplicate [@deriving.make.main] annotation"]
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
   $ echo "$test2" > test.mli
   $ driver test.mli 
@@ -59,9 +62,12 @@ more than 1 field, embed an error for each duplicate
   include
     sig
       [@@@ocaml.warning "-32"]
-      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
-      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
-      [%%ocaml.error "Duplicate [@deriving.make.main] annotation"]
+      [%%ocaml.error
+        "deriver make: Duplicate [@deriving.make.main] annotation"]
+      [%%ocaml.error
+        "deriver make: Duplicate [@deriving.make.main] annotation"]
+      [%%ocaml.error
+        "deriver make: Duplicate [@deriving.make.main] annotation"]
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 
@@ -98,8 +104,10 @@ Test 4: Given a record type with both `@main` and
   type d = {
     x: int [@default 5][@main ];
     y: bool }[@@deriving make]
-  include struct [%%ocaml.error "Cannot use both @default and @main"] end
-  [@@ocaml.doc "@inline"][@@merlin.hide ]
+  include
+    struct
+      [%%ocaml.error "deriver make: Cannot use both @default and @main"]
+    end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 5: Testing ppxlib: Unexpected attribute payload 
   $ test5="

@@ -80,8 +80,8 @@
      ;;
   
      let lambda_sig ~loc arg_tys body_ty =
-      List.fold_left (fun acc (lab, arg_ty) ->
-       ptyp_arrow ~loc lab arg_ty acc) body_ty arg_tys 
+      List.fold_left (fun return_ty (arg_label, arg_ty) ->
+       ptyp_arrow ~arg_label lab arg_ty return_ty) body_ty arg_tys 
      ;;
 
      let record ~loc pairs =

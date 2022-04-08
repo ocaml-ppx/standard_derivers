@@ -75,8 +75,8 @@
      ;;
 
      let lambda ~loc patterns body =
-      List.fold_left (fun acc (lab, pat, default) ->
-       pexp_fun ~loc lab default pat acc) body patterns
+      List.fold_left (fun expr (arg_label, default, pat) ->
+       pexp_fun ~loc arg_label default pat expr) body patterns
      ;;
   
      let lambda_sig ~loc arg_tys body_ty =

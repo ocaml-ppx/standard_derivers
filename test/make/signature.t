@@ -47,7 +47,7 @@ Test 3: Given a non-record type, embed error
         "deriver make: Unsupported use of make (you can only use it on records)."]
     end[@@ocaml.doc "@inline"][@@merlin.hide ]
 
-Test 4: Given a private type, embed error
+Test 4: Given a private type, expose make_d
   $ test4="
   > type d = private {
   >   x: int ;
@@ -57,12 +57,8 @@ Test 4: Given a private type, embed error
   type d = private {
     x: int ;
     y: bool }[@@deriving make]
-  include
-    sig
-      [@@@ocaml.warning "-32"]
-      [%%ocaml.error
-        "deriver make: We cannot expose functions that explicitly create private records."]
-    end[@@ocaml.doc "@inline"][@@merlin.hide ]
+  include sig [@@@ocaml.warning "-32"] val make_d : x:int -> y:bool -> d end
+  [@@ocaml.doc "@inline"][@@merlin.hide ]
 
 Test 5: Given recursive types which are exclusively
 record types, expose 1 make function for each record 

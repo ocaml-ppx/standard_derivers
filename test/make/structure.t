@@ -61,7 +61,8 @@ Test 4: Given a private record type d, derive make_d
   type d = private {
     x: int ;
     y: bool }[@@deriving make]
-  include struct  end[@@ocaml.doc "@inline"][@@merlin.hide ]
+  include struct let make_d ~x  ~y  = { x; y } end[@@ocaml.doc "@inline"]
+  [@@merlin.hide ]
 
 Test 5: Given recursive types which are exclusively
 record types, derive 1 make function for each record 

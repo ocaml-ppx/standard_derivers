@@ -120,7 +120,6 @@
 
      let derive_per_td (td : type_declaration) : signature =
        let { ptype_name = { txt = ty_name; loc }
-           ; ptype_private = private_
            ; ptype_params
            ; ptype_kind
            ; _
@@ -131,11 +130,7 @@
        let ty_params = List.map (fun (tp, _variance) -> tp) ptype_params in
        match ptype_kind with
        | Ptype_record label_decls ->
-        if private_ = Public then  
-          create_make_sig ~loc ~ty_name ~ty_params label_decls
-       else 
-        [psig_extension ~loc 
-          (Location.error_extensionf ~loc "deriver make: We cannot expose functions that explicitly create private records.") [] ]
+        create_make_sig ~loc ~ty_name ~ty_params label_decls
        | _ -> []
    
      let generate ~ctxt (rec_flag, tds) =
@@ -184,7 +179,6 @@
     
      let derive_per_td (td : type_declaration) : structure =
        let { ptype_name = { txt = record_name; loc }
-           ; ptype_private = private_
            ; ptype_kind
            ; _
            }
@@ -193,9 +187,7 @@
        in
        match ptype_kind with
        | Ptype_record label_decls ->
-        (match private_ with
-        | Private -> []
-        | Public -> create_make_fun ~loc ~record_name label_decls )
+        create_make_fun ~loc ~record_name label_decls
        | _ -> []
    
      let generate ~ctxt (rec_flag, tds) =

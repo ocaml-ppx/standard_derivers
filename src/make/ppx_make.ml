@@ -131,6 +131,8 @@
        match ptype_kind with
        | Ptype_record label_decls ->
         create_make_sig ~loc ~ty_name ~ty_params label_decls
+       (* Does not derive when matching with the non-record types 
+        of a recursive type definition. See tests for examples. *)
        | _ -> []
    
      let generate ~ctxt (rec_flag, tds) =
@@ -188,6 +190,8 @@
        match ptype_kind with
        | Ptype_record label_decls ->
         create_make_fun ~loc ~record_name label_decls
+       (* Does not derive when matching with the non-record types 
+        of a recursive type definition. See tests for examples. *)
        | _ -> []
    
      let generate ~ctxt (rec_flag, tds) =

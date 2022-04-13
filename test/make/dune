@@ -1,0 +1,10 @@
+(executable
+ (name driver)
+ (libraries ppx_make ppxlib))
+
+(env
+ (_
+  (binaries driver.exe)))
+
+(cram
+ (deps %{bin:driver}))

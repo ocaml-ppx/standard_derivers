@@ -1,0 +1,3 @@
+(library (name ppx_make)
+ (kind ppx_deriver) (ppx_runtime_libraries fieldslib) (libraries ppxlib)
+ (preprocess (pps ppxlib.metaquot)))
